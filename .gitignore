@@ -1,0 +1,12 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Node
+client/node_modules/
+client/.env
+build/
+
+# VS Code
+.vscode/
