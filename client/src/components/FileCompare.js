@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import DiffViewer from 'react-diff-viewer';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import CsvDiffTable from './CsvDiffTable';
 
 const FileCompare = () => {
   const [file1, setFile1] = useState(null);
@@ -8,6 +11,29 @@ const FileCompare = () => {
   const [diffResult, setDiffResult] = useState('');
   const [error, setError] = useState('');
   const [downloadUrl, setDownloadUrl] = useState(null);
+  const [fileType, setFileType] = useState('');
+  const [oldLines, setOldLines] = useState([]);
+  const [newLines, setNewLines] = useState([]);
+
+const parseDiff = (diffString) => {
+  const oldL = [];
+  const newL = [];
+
+  const lines = diffString.split('\n');
+  lines.forEach((line) => {
+    if (line.startsWith('-') && !line.startsWith('---')) {
+      oldL.push(line.slice(1));
+    } else if (line.startsWith('+') && !line.startsWith('+++')) {
+      newL.push(line.slice(1));
+    } else if (!line.startsWith('@@') && !line.startsWith('---') && !line.startsWith('+++')) {
+      oldL.push(line);
+      newL.push(line);
+    }
+  });
+
+  setOldLines(oldL);
+  setNewLines(newL);
+};
 
   const handleCompare = async () => {
     if (!file1 || !file2) {
@@ -21,14 +47,22 @@ const FileCompare = () => {
 
     try {
       const res = await axios.post('http://127.0.0.1:5000/compare', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      setDiffResult(res.data.diff);
+      setFileType(res.data.type);
       
-      const blob = new Blob([res.data.diff], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      setDownloadUrl(url);
+      if (res.data.type === 'csv') {
+        setDiffResult(res.data.diff); // CSV: Array of rows
+        setDownloadUrl(null);
+    } else if (res.data.type === 'text') {
+        setDiffResult(res.data.diff); // Text diff
+        parseDiff(res.data.diff);
+
+        const blob = new Blob([res.data.diff], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        setDownloadUrl(url);
+    }
 
       setError('');
     } catch (err) {
@@ -37,95 +71,128 @@ const FileCompare = () => {
     }
   };
 
-  const parseDiff = (diffString) => {
-    const oldLines = [];
-    const newLines = [];
-
-    const lines = diffString.split('\n');
-    lines.forEach((line) => {
-      if (line.startsWith('-')) oldLines.push(line.slice(1));
-      else if (line.startsWith('+')) newLines.push(line.slice(1));
-      else if (!line.startsWith('@@') && !line.startsWith('---') && !line.startsWith('+++')) {
-        oldLines.push(line);
-        newLines.push(line);
-      }
-    });
-
-    return { oldLines: oldLines.join('\n'), newLines: newLines.join('\n') };
-  };
-
-  const { oldLines, newLines } = parseDiff(diffResult);
-
   return (
-  <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-    <h2>Compare Two Files</h2>
+    <div>
+      <h2>Compare Two Files</h2>
+      <div>
+        <p>File 1:</p>
+        <input type="file" onChange={(e) => setFile1(e.target.files[0])} />
+        <p>File 2:</p>
+        <input type="file" onChange={(e) => setFile2(e.target.files[0])} />
+        <button onClick={handleCompare}>Compare</button>
+      </div>
 
-    <div style={{ marginBottom: '1rem' }}>
-      <label><strong>File 1:</strong></label><br />
-      <input type="file" onChange={(e) => setFile1(e.target.files[0])} />
-      {file1 && <p style={{ fontSize: '0.9rem' }}>Selected: {file1.name}</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      {diffResult && (
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '2rem' }}>
+          <div style={{ flex: 1 }}>
+            <h4>File 1</h4>
+            <pre style={{ background: '#f7f7f7', padding: '1rem', overflowX: 'auto' }}>
+                {oldLines.slice(0, 100).map((line, i) => (
+                    <div key={i}>{line}</div>
+                ))}
+            </pre>
+        </div>
+        <div style={{ flex: 1 }}>
+            <h4>File 2</h4>
+            <pre style={{ background: 'f7f7f7', padding: '1rem', overflowX: 'auto' }}>
+                {newLines.slice(0, 100).map((line, i) => (
+                    <div key={i}>{line}</div>
+                ))}
+            </pre>
+        </div>
+    </div>
+      )}
+
+      {fileType === 'csv' && Array.isArray(diffResult) && (
+  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '2rem' }}>
+    {/* File 1 */}
+    <div style={{ flex: 1 }}>
+      <h4>File 1</h4>
+      <pre style={{
+        background: '#f7f7f7',
+        padding: '1rem',
+        overflowY: 'auto',
+        maxHeight: '400px',
+        border: '1px solid #ccc'
+      }}>
+        {diffResult.slice(0, 100).map((row, i) => {
+          const rowChanged = row.some(cell => cell.changed);
+          return (
+            <div key={i} style={{ backgroundColor: rowChanged ? '#ffeeba' : 'transparent', display: 'flex' }}>
+              <span style={{ width: '2rem', color: '#888' }}>{i + 1}</span>
+              <span>
+                {row.map((cell, j) =>
+                  <span key={j} style={{ marginRight: '1ch' }}>
+                    {cell.value || cell.value1 || ''}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </pre>
     </div>
 
-    <div style={{ marginBottom: '1rem' }}>
-      <label><strong>File 2:</strong></label><br />
-      <input type="file" onChange={(e) => setFile2(e.target.files[0])} />
-      {file2 && <p style={{ fontSize: '0.9rem' }}>Selected: {file2.name}</p>}
+    {/* File 2 */}
+    <div style={{ flex: 1 }}>
+      <h4>File 2</h4>
+      <pre style={{
+        background: '#f7f7f7',
+        padding: '1rem',
+        overflowY: 'auto',
+        maxHeight: '400px',
+        border: '1px solid #ccc'
+      }}>
+        {diffResult.slice(0, 100).map((row, i) => {
+          const rowChanged = row.some(cell => cell.changed);
+          return (
+            <div key={i} style={{ backgroundColor: rowChanged ? '#ffeeba' : 'transparent', display: 'flex' }}>
+              <span style={{ width: '2rem', color: '#888' }}>{i + 1}</span>
+              <span>
+                {row.map((cell, j) =>
+                  <span key={j} style={{ marginRight: '1ch' }}>
+                    {cell.value2 || cell.value || ''}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </pre>
     </div>
-
-    <button onClick={handleCompare} style={{
-      padding: '10px 20px',
-      fontSize: '1rem',
-      backgroundColor: '#007BFF',
-      color: 'white',
-      border: 'none',
-      borderRadius: '5px',
-      cursor: 'pointer'
-    }}>
-      Compare
-    </button>
-
-    {error && <p style={{ color: 'red', marginTop: '1rem' }}>{error}</p>}
-
-{diffResult && (
-  <div style={{ marginTop: '2rem' }}>
-    <h3>Results:</h3>
-    <DiffViewer
-      oldValue={oldLines}
-      newValue={newLines}
-      splitView={true}
-      showDiffOnly={false}
-      styles={{
-        variables: {
-          light: {
-            diffViewerBackground: '#f7f7f7',
-            addedBackground: '#d4fcdc',
-            removedBackground: '#ffecec',
-          }
-        }
-      }}
-    />
-
-    {downloadUrl && (
-      <a
-        href={downloadUrl}
-        download="diff_result.txt"
-        style={{
-          display: 'inline-block',
-          marginTop: '1rem',
-          padding: '8px 16px',
-          backgroundColor: '#28a745',
-          color: 'white',
-          textDecoration: 'none',
-          borderRadius: '5px'
-        }}
-      >
-        Download Diff
-      </a>
-    )}
   </div>
 )}
-  </div>
-);
+
+      {fileType === 'text' && (
+        <div style={{ marginTop: '1rem' }}>
+          <h4>Highlighted Diff (Text)</h4>
+          <SyntaxHighlighter language="python" style={oneDark}>
+            {diffResult}
+          </SyntaxHighlighter>
+        </div>
+      )}
+
+      {downloadUrl && (
+        <a
+          href={downloadUrl}
+          download="diff_result.txt"
+          style={{
+            display: 'inline-block',
+            marginTop: '1rem',
+            padding: '8px 16px',
+            backgroundColor: '#28a745',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '5px',
+          }}
+        >
+          Download Diff
+        </a>
+      )}
+    </div>
+  );
 };
 
 export default FileCompare;
