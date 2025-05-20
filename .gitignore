@@ -9,4 +9,4 @@ client/.env
 build/
 
 # VS Code
-.vscode/
+.vscode/uploads/
