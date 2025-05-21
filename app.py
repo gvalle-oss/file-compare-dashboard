@@ -78,6 +78,15 @@ def compare_files():
         elif ext1 in ['txt', 'py', 'xml']:
             diff = compare_text(f1, f2)
             return jsonify({'type': 'text', 'diff': diff})
+        
+        from flask import send_from_directory
+        @app.route('/')
+        def serve_index():
+            return send_from_directory('build', 'index.html')
+        
+        @app.route('/<path:path>')
+        def serve_static(path):
+            return send_from_directory('build', path)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -14,6 +14,7 @@ const FileCompare = () => {
   const [fileType, setFileType] = useState('');
   const [oldLines, setOldLines] = useState([]);
   const [newLines, setNewLines] = useState([]);
+  const [showFullDiff, setShowFullDiff] = useState(false);
 
 const parseDiff = (diffString) => {
   const oldL = [];
@@ -106,73 +107,65 @@ const parseDiff = (diffString) => {
       )}
 
       {fileType === 'csv' && Array.isArray(diffResult) && (
-  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '2rem' }}>
-    {/* File 1 */}
-    <div style={{ flex: 1 }}>
-      <h4>File 1</h4>
-      <pre style={{
-        background: '#f7f7f7',
-        padding: '1rem',
-        overflowY: 'auto',
-        maxHeight: '400px',
-        border: '1px solid #ccc'
-      }}>
-        {diffResult.slice(0, 100).map((row, i) => {
-          const rowChanged = row.some(cell => cell.changed);
-          return (
-            <div key={i} style={{ backgroundColor: rowChanged ? '#ffeeba' : 'transparent', display: 'flex' }}>
-              <span style={{ width: '2rem', color: '#888' }}>{i + 1}</span>
-              <span>
-                {row.map((cell, j) =>
-                  <span key={j} style={{ marginRight: '1ch' }}>
-                    {cell.value || cell.value1 || ''}
-                  </span>
-                )}
-              </span>
+  <>
+    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '2rem' }}>
+      <div style={{ flex: 1 }}>
+        <h4>File 1</h4>
+        <div className="csv-table">
+          {diffResult.slice(0, showFullDiff ? diffResult.length : 100).map((row, i) => (
+            <div key={i} className="csv-row">
+              {row.map((cell, j) => (
+                <span key={j} style={{ backgroundColor: cell.changed ? '#ffeb3b' : 'transparent', padding: '0 0.5rem' }}>
+                  {cell.value1 || cell.value}
+                </span>
+              ))}
             </div>
-          );
-        })}
-      </pre>
-    </div>
-
-    {/* File 2 */}
-    <div style={{ flex: 1 }}>
-      <h4>File 2</h4>
-      <pre style={{
-        background: '#f7f7f7',
-        padding: '1rem',
-        overflowY: 'auto',
-        maxHeight: '400px',
-        border: '1px solid #ccc'
-      }}>
-        {diffResult.slice(0, 100).map((row, i) => {
-          const rowChanged = row.some(cell => cell.changed);
-          return (
-            <div key={i} style={{ backgroundColor: rowChanged ? '#ffeeba' : 'transparent', display: 'flex' }}>
-              <span style={{ width: '2rem', color: '#888' }}>{i + 1}</span>
-              <span>
-                {row.map((cell, j) =>
-                  <span key={j} style={{ marginRight: '1ch' }}>
-                    {cell.value2 || cell.value || ''}
-                  </span>
-                )}
-              </span>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex: 1 }}>
+        <h4>File 2</h4>
+        <div className="csv-table">
+          {diffResult.slice(0, showFullDiff ? diffResult.length : 100).map((row, i) => (
+            <div key={i} className="csv-row">
+              {row.map((cell, j) => (
+                <span key={j} style={{ backgroundColor: cell.changed ? '#ffeb3b' : 'transparent', padding: '0 0.5rem' }}>
+                  {cell.value2 || cell.value}
+                </span>
+              ))}
             </div>
-          );
-        })}
-      </pre>
+          ))}
+        </div>
+      </div>
     </div>
-  </div>
+  </>
 )}
 
       {fileType === 'text' && (
-        <div style={{ marginTop: '1rem' }}>
-          <h4>Highlighted Diff (Text)</h4>
-          <SyntaxHighlighter language="python" style={oneDark}>
-            {diffResult}
-          </SyntaxHighlighter>
-        </div>
-      )}
+        <div style={{ marginTop: '2rem' }}>
+            <h4>Highlighted Diff (Text)</h4>
+            <SyntaxHighlighter language="python" style={oneDark}>
+                {showFullDiff ? diffResult : diffResult.split('\n').slice(0, 100).join('\n')}
+                </SyntaxHighlighter>
+                </div>
+            )}
+            
+            {(fileType === 'csv' || fileType === 'text') && diffResult && (
+                <button
+                onClick={() => setShowFullDiff(!showFullDiff)}
+                style={{
+                    marginTop: '1rem',
+                    padding: '8px 16px',
+                    backgroundColor: '#2196f3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                }}
+                >
+                    {showFullDiff ? 'View Less' : 'View More'}
+                    </button>
+                )}
 
       {downloadUrl && (
         <a
