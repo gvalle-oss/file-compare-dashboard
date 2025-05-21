@@ -3,6 +3,7 @@ import mimetypes
 import csv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask import send_from_directory
 import difflib
 
 app = Flask(__name__)
@@ -79,14 +80,13 @@ def compare_files():
             diff = compare_text(f1, f2)
             return jsonify({'type': 'text', 'diff': diff})
         
-        from flask import send_from_directory
-        @app.route('/')
-        def serve_index():
-            return send_from_directory('build', 'index.html')
-        
+        @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
-        def serve_static(path):
-            return send_from_directory('build', path)
+        def serve(path):
+            if path != "" and os.path.exists(os.path.join('client/build', path)):
+                return send_from_directory('client/build', path)
+            else:
+                return send_from_directory('client/build', 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
