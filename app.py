@@ -83,10 +83,10 @@ def compare_files():
         @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
         def serve(path):
-            if path != "" and os.path.exists(os.path.join('client/build', path)):
-                return send_from_directory('client/build', path)
+            if path != "" and os.path.exists(os.path.join('client', 'build', path)):
+                return send_from_directory(os.path.join('client', 'build'), path)
             else:
-                return send_from_directory('client/build', 'index.html')
+                return send_from_directory(os.path.join('client', 'build'), 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
