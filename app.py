@@ -1,9 +1,8 @@
+from flask import Flask, request, jsonify, send_from_directory
 import os
 import mimetypes
 import csv
-from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask import send_from_directory
 import difflib
 
 app = Flask(__name__)
