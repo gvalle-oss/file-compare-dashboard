@@ -5,7 +5,7 @@ import csv
 from flask_cors import CORS
 import difflib
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='client/build', static_url_path='/')
 CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
@@ -82,10 +82,10 @@ def compare_files():
         @app.route('/', defaults={'path': ''})
         @app.route('/<path:path>')
         def serve(path):
-            if path != "" and os.path.exists(os.path.join('client', 'build', path)):
-                return send_from_directory(os.path.join('client', 'build'), path)
+            if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+                return send_from_directory(app.static_folder, path)
             else:
-                return send_from_directory(os.path.join('client', 'build'), 'index.html')
+                return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
